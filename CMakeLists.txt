@@ -47,4 +47,4 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 # Копируем папку sprites рядом с .exe (в Debug)
-file(COPY sprites DESTINATION ${CMAKE_BINARY_DIR}/Debug)
+file(COPY assets DESTINATION ${CMAKE_BINARY_DIR}/Debug)

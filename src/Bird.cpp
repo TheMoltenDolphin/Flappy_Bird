@@ -1,8 +1,16 @@
 #include "Bird.hpp"
 
 Bird::Bird() : velocity(0.f) {
-    texture.loadFromFile("assets/bird.png");
+    static sf::Texture sharedTexture;
+    static bool loaded = false;
+    if (!loaded) {
+        loaded = sharedTexture.loadFromFile("assets/bird.png");
+        if (!loaded) {
+        }
+    }
+    texture = sharedTexture;
     sprite.setTexture(texture);
+    sprite.setScale(4.f,4.f);
     sprite.setPosition(300, 400);
 }
 

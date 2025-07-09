@@ -1,12 +1,19 @@
 #include "Pipe.hpp"
 
 Pipe::Pipe(float x, float gapY) : oscillationOffset(0.f), movingUp(true) {
-    texture.loadFromFile("assets/pipe.png");
-    topPipe.setTexture(texture);
-    bottomPipe.setTexture(texture);
+    static sf::Texture sharedTexture;
+    static bool loaded = false;
+    if (!loaded) {
+        sharedTexture.loadFromFile("assets/pipe.png");
+        loaded = true;
+    }
+    topPipe.setTexture(sharedTexture);
+    bottomPipe.setTexture(sharedTexture);
+    topPipe.setScale(4.f, 4.f);
+    bottomPipe.setScale(4.f, 4.f);
     topPipe.setRotation(180);
-    topPipe.setPosition(x, gapY - 200 - texture.getSize().y);
-    bottomPipe.setPosition(x, gapY + 200);
+    topPipe.setPosition(x, gapY - 100 - sharedTexture.getSize().y);
+    bottomPipe.setPosition(x-28*topPipe.getScale().x, gapY + 100);
 }
 
 void Pipe::update(float dt, float speed) {

@@ -18,12 +18,15 @@ private:
     void render();
     void reset();
 
+    
     sf::RenderWindow window;
     Bird bird;
     std::vector<Pipe> pipes;
     std::vector<Bonus> bonuses;
     sf::Clock spawnClock;
     sf::Clock gameClock;
+    sf::Clock flapClock;
+    const float flapCooldown = 0.25f;
     float pipeSpawnInterval;
     float pipeSpeed;
     int score;

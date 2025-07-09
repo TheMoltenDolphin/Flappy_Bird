@@ -15,5 +15,5 @@ private:
     sf::Texture texture;
     float velocity;
     const float gravity = 900.f;
-    const float flapStrength = -300.f;
+    const float flapStrength = -500.f;
 };

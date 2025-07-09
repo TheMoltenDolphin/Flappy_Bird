@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <ctime>
 
-Game::Game() : window(sf::VideoMode(1000, 1000), "Flappy Bird"), pipeSpawnInterval(2.0f), pipeSpeed(200.f), score(0), gameOver(false) {
+Game::Game() : window(sf::VideoMode(1000, 1000), "Flappy Bird"), pipeSpawnInterval(2.f), pipeSpeed(200.f), score(0), gameOver(false) {
     window.setFramerateLimit(60);
     srand(static_cast<unsigned>(time(nullptr)));
 }
@@ -22,17 +22,22 @@ void Game::processEvents() {
     while (window.pollEvent(event)) {
         if (event.type == sf::Event::Closed)
             window.close();
-        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space)
-            bird.flap();
+        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space) {
+            if (flapClock.getElapsedTime().asSeconds() > flapCooldown) {
+                bird.flap();
+                flapClock.restart();
+            }
+        }
     }
 }
+
 
 void Game::update(float dt) {
     bird.update(dt);
 
     if (spawnClock.getElapsedTime().asSeconds() > pipeSpawnInterval) {
-        float gapY = 200 + rand() % 600;
-        pipes.emplace_back(1000, gapY);
+        float gapY = 350 + rand() % 600;
+        pipes.emplace_back(1200, gapY);
         spawnClock.restart();
     }
 
