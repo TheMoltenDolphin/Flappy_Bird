@@ -1,17 +1,20 @@
 #include "Pipe.hpp"
 #include "Config.hpp"
-
+#include <iostream>
+#include <cmath>
 
 Pipe::Pipe(float x, float gapY, float gameTime, bool moving)
     : isMoving(moving),
       hasStartedMoving(false),
       currentOffsetY(0.f),
-      moveSpeed(50.f)
+      moveSpeed(MOVING_PIPE_SPEED),
+      currentMovingPipeDelay(MOVING_PIPE_DELAY_BEFORE_MOVING_START)
 {
     static sf::Texture sharedTexture;
     static bool loaded = false;
     if (!loaded) {
         if (!sharedTexture.loadFromFile("assets/pipe.png")) {
+            std::cerr << "Ошибка загрузки pipe.png\n";
         }
         loaded = true;
     }
@@ -27,25 +30,34 @@ Pipe::Pipe(float x, float gapY, float gameTime, bool moving)
     topPipe.setOrigin(texSize.x, texSize.y);
     topPipe.setRotation(180);
 
-    topPipe.setPosition(x, gapY - PIPE_GAP / 2 - pipeHeight);
-    bottomPipe.setPosition(x, gapY + PIPE_GAP / 2);
+    topPipe.setPosition(x, gapY - PIPE_GAP / 2.f - pipeHeight);
+    bottomPipe.setPosition(x, gapY + PIPE_GAP / 2.f);
 
     if (isMoving) {
-        float maxOffset = std::min(PIPE_INITIAL_OFFSET_RANGE + gameTime * PIPE_OFFSET_GROWTH_RATE, PIPE_MAX_OFFSET_RANGE);
+        float maxOffset = std::min(
+            MOVING_PIPE_INITIAL_OFFSET + gameTime * MOVING_PIPE_OFFSET_GROWTH,
+            MOVING_PIPE_MAX_OFFSET
+        );
+
         targetOffsetY = static_cast<float>((rand() % static_cast<int>(maxOffset * 2 + 1)) - maxOffset);
-        moveSpeed = PIPE_MOVE_SPEED;
         movementDelayClock.restart();
     }
 }
 
+void Pipe::update(float deltaTime)
+{
+    // Движение трубы влево
+    topPipe.move(-moveSpeed * deltaTime, 0);
+    bottomPipe.move(-moveSpeed * deltaTime, 0);
+
+    currentMovingPipeDelay += MOVING_PIPE_DELAY_BEFORE_MOVING_ACCELERATION * deltaTime;
+    if (currentMovingPipeDelay > MOVING_PIPE_DELAY_BEFORE_MOVING_MAX)
+        currentMovingPipeDelay = MOVING_PIPE_DELAY_BEFORE_MOVING_MAX;
 
 
-void Pipe::update(float deltaTime) {
-    topPipe.move(-PIPE_SPEED * deltaTime, 0);
-    bottomPipe.move(-PIPE_SPEED * deltaTime, 0);
-
+    // Обработка движения подвижных труб
     if (isMoving) {
-        if (movementDelayClock.getElapsedTime().asSeconds() > PIPE_MOVE_DELAY && !hasStartedMoving) {
+        if (movementDelayClock.getElapsedTime().asSeconds() > currentMovingPipeDelay && !hasStartedMoving) {
             hasStartedMoving = true;
         }
 
@@ -53,8 +65,9 @@ void Pipe::update(float deltaTime) {
             float direction = (targetOffsetY > currentOffsetY) ? 1.f : -1.f;
             float moveStep = direction * moveSpeed * deltaTime;
 
-            if (std::abs(moveStep) > std::abs(targetOffsetY - currentOffsetY))
+            if (std::abs(moveStep) > std::abs(targetOffsetY - currentOffsetY)) {
                 moveStep = targetOffsetY - currentOffsetY;
+            }
 
             topPipe.move(0, moveStep);
             bottomPipe.move(0, moveStep);
@@ -63,21 +76,42 @@ void Pipe::update(float deltaTime) {
     }
 }
 
-
-
-void Pipe::draw(sf::RenderWindow& window) {
+void Pipe::draw(sf::RenderWindow& window)
+{
     window.draw(topPipe);
     window.draw(bottomPipe);
 }
 
-bool Pipe::isOffScreen() const {
-    return topPipe.getPosition().x + topPipe.getGlobalBounds().width < 0;
-}
-
-sf::FloatRect Pipe::getTopBounds() const {
+sf::FloatRect Pipe::getTopBounds() const
+{
     return topPipe.getGlobalBounds();
 }
 
-sf::FloatRect Pipe::getBottomBounds() const {
+sf::FloatRect Pipe::getBottomBounds() const
+{
     return bottomPipe.getGlobalBounds();
 }
+
+float Pipe::getX() const
+{
+    return bottomPipe.getPosition().x;
+}
+
+bool Pipe::isOffScreen() const
+{
+    return getX() + topPipe.getGlobalBounds().width < 0;
+}
+
+bool Pipe::hasPassed(float birdX)
+{
+    if (!scored && getX() + topPipe.getGlobalBounds().width < birdX) {
+        scored = true;
+        return true;
+    }
+    return false;
+}
+
+void Pipe::setSpeed(float speed) {
+    moveSpeed = speed;
+}
+

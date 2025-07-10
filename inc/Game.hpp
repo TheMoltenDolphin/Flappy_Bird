@@ -7,29 +7,29 @@
 
 class Game {
 public:
-
     Game();
     void run();
 
 private:
-
-    void processEvents();
-    void update(float dt);
-    void render();
-    void reset();
-
-    
     sf::RenderWindow window;
+    sf::Clock clock;
+
     Bird bird;
     std::vector<Pipe> pipes;
-    std::vector<Bonus> bonuses;
-    sf::Clock spawnClock;
-    sf::Clock gameClock;
-    sf::Clock flapClock;
-    const float flapCooldown = 0.25f;
-    float totalElapsedTime = 0.f;
-    float pipeSpawnInterval;
-    float pipeSpeed;
+
     int score;
-    bool gameOver;
+    sf::Font font;
+    sf::Text scoreText;
+
+    float currentPipeSpeed;
+    float currentPipeSpawnInterval;
+
+    float pipeSpawnTimer;
+    float totalElapsedTime;
+    bool isGameOver;
+
+    void processEvents();
+    void update(float deltaTime);
+    void render();
+    void reset();
 };

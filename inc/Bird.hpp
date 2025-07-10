@@ -4,16 +4,15 @@
 class Bird {
 public:
     Bird();
-    void update(float dt);
-    void flap();
+
+    void update(float deltaTime);
+    void jump();
     void draw(sf::RenderWindow& window);
     sf::FloatRect getBounds() const;
     void reset();
 
 private:
     sf::Sprite sprite;
-    sf::Texture texture;
     float velocity;
-    const float gravity = 900.f;
-    const float flapStrength = -500.f;
+    float inputCooldown;
 };

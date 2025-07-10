@@ -1,102 +1,170 @@
 #include "Game.hpp"
 #include "Config.hpp"
+#include <iostream>
 #include <cstdlib>
 #include <ctime>
 
-Game::Game() : window(sf::VideoMode(1000, 1000), "Flappy Bird"), pipeSpawnInterval(2.f), pipeSpeed(200.f), score(0), gameOver(false) {
+Game::Game()
+    : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Flappy Bird ++"),
+      pipeSpawnTimer(0.f),
+      totalElapsedTime(0.f),
+      isGameOver(false)
+{
+        score = 0;
+
+    if (!font.loadFromFile("assets/arial.ttf")) {
+        std::cerr << "SOSALSOSALSOSAL\n";
+    }
+
+    scoreText.setFont(font);
+    scoreText.setCharacterSize(72);
+    scoreText.setFillColor(sf::Color::Red);
+    scoreText.setPosition(30.f, 20.f);
+    scoreText.setString("0");
+
+    currentPipeSpeed = PIPE_SPEED_START;
+    currentPipeSpawnInterval = PIPE_SPAWN_INTERVAL_START;
+
     window.setFramerateLimit(60);
-    srand(static_cast<unsigned>(time(nullptr)));
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
 }
 
-void Game::run() {
-    sf::Clock clock;
+void Game::run()
+{
     while (window.isOpen()) {
-        float dt = clock.restart().asSeconds();
+        float deltaTime = clock.restart().asSeconds();
+
         processEvents();
-        if (!gameOver) update(dt);
+
+        if (!isGameOver) {
+            update(deltaTime);
+        }
+
         render();
     }
 }
 
-void Game::processEvents() {
+void Game::processEvents()
+{
     sf::Event event;
     while (window.pollEvent(event)) {
         if (event.type == sf::Event::Closed)
             window.close();
-        if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space) {
-            if (flapClock.getElapsedTime().asSeconds() > flapCooldown) {
-                bird.flap();
-                flapClock.restart();
-            }
-        }
+
+        if (!isGameOver && event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space)
+            bird.jump();
+
+        if (isGameOver && event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::R)
+            reset();
     }
 }
 
+void Game::update(float deltaTime)
+{
+    totalElapsedTime += deltaTime;
+    pipeSpawnTimer += deltaTime;
 
-void Game::update(float dt) {
-    totalElapsedTime += dt;
-    bird.update(dt);
+    bird.update(deltaTime);
 
-    if (spawnClock.getElapsedTime().asSeconds() > pipeSpawnInterval) {
-        float GAP = 200.f;
-        float scale = 5.f;
-        float pipeTextureHeight = 160.f; // укажи точную высоту своей текстуры!
-        float pipeHeight = pipeTextureHeight * scale;
+    // Увеличиваем скорость труб с ограничением
+    currentPipeSpeed += PIPE_SPEED_ACCELERATION * deltaTime;
+    if (currentPipeSpeed > PIPE_SPEED_MAX)
+        currentPipeSpeed = PIPE_SPEED_MAX;
 
-        float minGapY = PIPE_GAP / 2 + PIPE_MARGIN;
-        float maxGapY = WINDOW_HEIGHT - PIPE_GAP / 2 - PIPE_MARGIN;
-        float gapY = rand() % static_cast<int>(maxGapY - minGapY + 1) + minGapY;
+    // Уменьшаем интервал появления труб, но не меньше минимального
+    currentPipeSpawnInterval -= PIPE_SPAWN_ACCELERATION * deltaTime;
+    if (currentPipeSpawnInterval < PIPE_SPAWN_INTERVAL_MIN)
+        currentPipeSpawnInterval = PIPE_SPAWN_INTERVAL_MIN;
 
-        float moveChance = std::min(INITIAL_MOVING_PIPE_CHANCE + totalElapsedTime * MOVING_PIPE_CHANCE_GROWTH, MAX_MOVING_PIPE_CHANCE);
 
+    if (pipeSpawnTimer >= currentPipeSpawnInterval) {
+        pipeSpawnTimer = 0.f;
+
+        // Вычисление ограниченного Y для трубы
+        float gapY = static_cast<float>(rand() % static_cast<int>(PIPE_MAX_GAP_Y - PIPE_MIN_GAP_Y)) + PIPE_MIN_GAP_Y;
+
+        // Вычисляем вероятность появления движущейся трубы
+        float moveChance = std::min(
+            MOVING_PIPE_INITIAL_CHANCE + totalElapsedTime * MOVING_PIPE_CHANCE_GROWTH,
+            MOVING_PIPE_MAX_CHANCE
+        );
         bool shouldMove = (static_cast<float>(rand()) / RAND_MAX) < moveChance;
-        pipes.emplace_back(WINDOW_WIDTH, gapY, totalElapsedTime, shouldMove);
-        spawnClock.restart();
+
+        Pipe newPipe(WINDOW_WIDTH, gapY, totalElapsedTime, shouldMove);
+        newPipe.setSpeed(currentPipeSpeed);
+        pipes.push_back(newPipe);    
     }
+
+    // Обновляем трубы
+    for (auto& pipe : pipes) {
+        pipe.update(deltaTime);
+    }
+
+    // Удаляем трубы, вышедшие за экран
+    pipes.erase(
+        std::remove_if(pipes.begin(), pipes.end(),
+            [](const Pipe& pipe) { return pipe.isOffScreen(); }),
+        pipes.end()
+    );
+
+    // Проверка столкновений
+    for (const auto& pipe : pipes) {
+        if (bird.getBounds().intersects(pipe.getTopBounds()) ||
+            bird.getBounds().intersects(pipe.getBottomBounds())) {
+            isGameOver = true;
+        }
+    }
+    for (auto& pipe : pipes) {
+        if (pipe.hasPassed(bird.getBounds().left)) {
+            score++;
+            scoreText.setString(std::to_string(score));
+        }
+    }
+
+
+    // Проверка выхода за границы
+    if (bird.getBounds().top < 0 || bird.getBounds().top + bird.getBounds().height > WINDOW_HEIGHT) {
+        isGameOver = true;
+    }
+}
+
+void Game::render()
+{
+    window.clear(sf::Color::Cyan);
 
     for (auto& pipe : pipes)
-        pipe.update(dt);
+        pipe.draw(window);
 
-    pipes.erase(std::remove_if(pipes.begin(), pipes.end(), [](const Pipe& p) { return p.isOffScreen(); }), pipes.end());
-
-    for (auto& bonus : bonuses)
-        bonus.update(dt, pipeSpeed);
-
-    bonuses.erase(std::remove_if(bonuses.begin(), bonuses.end(), [](const Bonus& b) { return b.isOffScreen(); }), bonuses.end());
-
-    for (const auto& pipe : pipes) {
-        if (bird.getBounds().intersects(pipe.getTopBounds()) || bird.getBounds().intersects(pipe.getBottomBounds())) {
-            gameOver = true;
-        }
-    }
-
-    for (auto it = bonuses.begin(); it != bonuses.end();) {
-        if (bird.getBounds().intersects(it->getBounds())) {
-            if (it->getType() == BonusType::Coin) score++;
-            else gameOver = true;
-            it = bonuses.erase(it);
-        } else ++it;
-    }
-
-    if (score > 0 && score % 10 == 0)
-        pipeSpeed += 10.f;
-}
-
-void Game::render() {
-    window.clear(sf::Color::Cyan);
     bird.draw(window);
-    for (auto& pipe : pipes) pipe.draw(window);
-    for (auto& bonus : bonuses) bonus.draw(window);
+    window.draw(scoreText);
+
+    if (isGameOver) {
+        static sf::Font font;
+        static bool fontLoaded = false;
+        if (!fontLoaded) {
+            if (!font.loadFromFile("assets/arial.ttf"))
+                std::cerr << "Не удалось загрузить шрифт\n";
+            fontLoaded = true;
+        }
+
+        sf::Text text("Game Over! Press R to restart", font, 72);
+        text.setFillColor(sf::Color::Red);
+        text.setPosition(WINDOW_WIDTH / 2.f - text.getLocalBounds().width / 2.f, WINDOW_HEIGHT / 2.f - 40.f);
+        window.draw(text);
+    }
+
     window.display();
 }
 
-void Game::reset() {
+void Game::reset()
+{
     bird.reset();
     pipes.clear();
-    bonuses.clear();
+    pipeSpawnTimer = 0.f;
+    totalElapsedTime = 0.f;
     score = 0;
-    pipeSpeed = 200.f;
-    gameOver = false;
-    spawnClock.restart();
-    gameClock.restart();
+    scoreText.setString("0");
+    isGameOver = false;
+    currentPipeSpeed = PIPE_SPEED_START;
+    currentPipeSpawnInterval = PIPE_SPAWN_INTERVAL_START;
 }
