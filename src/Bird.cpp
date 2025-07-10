@@ -1,4 +1,6 @@
 #include "Bird.hpp"
+#include "Config.hpp"
+
 
 Bird::Bird() : velocity(0.f) {
     static sf::Texture sharedTexture;
@@ -15,7 +17,7 @@ Bird::Bird() : velocity(0.f) {
 }
 
 void Bird::update(float dt) {
-    velocity += gravity * dt;
+    velocity += GRAVITY * dt;
     sprite.move(0, velocity * dt);
 }
 

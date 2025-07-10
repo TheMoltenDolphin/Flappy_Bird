@@ -1,29 +1,69 @@
 #include "Pipe.hpp"
+#include "Config.hpp"
 
-Pipe::Pipe(float x, float gapY) : oscillationOffset(0.f), movingUp(true) {
+
+Pipe::Pipe(float x, float gapY, float gameTime, bool moving)
+    : isMoving(moving),
+      hasStartedMoving(false),
+      currentOffsetY(0.f),
+      moveSpeed(50.f)
+{
     static sf::Texture sharedTexture;
     static bool loaded = false;
     if (!loaded) {
-        sharedTexture.loadFromFile("assets/pipe.png");
+        if (!sharedTexture.loadFromFile("assets/pipe.png")) {
+        }
         loaded = true;
     }
+
     topPipe.setTexture(sharedTexture);
     bottomPipe.setTexture(sharedTexture);
-    topPipe.setScale(4.f, 4.f);
-    bottomPipe.setScale(4.f, 4.f);
+    topPipe.setScale(PIPE_SCALE, PIPE_SCALE);
+    bottomPipe.setScale(PIPE_SCALE, PIPE_SCALE);
+
+    sf::Vector2u texSize = sharedTexture.getSize();
+    float pipeHeight = texSize.y * PIPE_SCALE;
+
+    topPipe.setOrigin(texSize.x, texSize.y);
     topPipe.setRotation(180);
-    topPipe.setPosition(x, gapY - 100 - sharedTexture.getSize().y);
-    bottomPipe.setPosition(x-28*topPipe.getScale().x, gapY + 100);
+
+    topPipe.setPosition(x, gapY - PIPE_GAP / 2 - pipeHeight);
+    bottomPipe.setPosition(x, gapY + PIPE_GAP / 2);
+
+    if (isMoving) {
+        float maxOffset = std::min(PIPE_INITIAL_OFFSET_RANGE + gameTime * PIPE_OFFSET_GROWTH_RATE, PIPE_MAX_OFFSET_RANGE);
+        targetOffsetY = static_cast<float>((rand() % static_cast<int>(maxOffset * 2 + 1)) - maxOffset);
+        moveSpeed = PIPE_MOVE_SPEED;
+        movementDelayClock.restart();
+    }
 }
 
-void Pipe::update(float dt, float speed) {
-    float dy = (movingUp ? -1 : 1) * 40 * dt;
-    topPipe.move(-speed * dt, dy);
-    bottomPipe.move(-speed * dt, dy);
 
-    oscillationOffset += dy;
-    if (oscillationOffset > 50 || oscillationOffset < -50) movingUp = !movingUp;
+
+void Pipe::update(float deltaTime) {
+    topPipe.move(-PIPE_SPEED * deltaTime, 0);
+    bottomPipe.move(-PIPE_SPEED * deltaTime, 0);
+
+    if (isMoving) {
+        if (movementDelayClock.getElapsedTime().asSeconds() > PIPE_MOVE_DELAY && !hasStartedMoving) {
+            hasStartedMoving = true;
+        }
+
+        if (hasStartedMoving && std::abs(currentOffsetY - targetOffsetY) > 1.f) {
+            float direction = (targetOffsetY > currentOffsetY) ? 1.f : -1.f;
+            float moveStep = direction * moveSpeed * deltaTime;
+
+            if (std::abs(moveStep) > std::abs(targetOffsetY - currentOffsetY))
+                moveStep = targetOffsetY - currentOffsetY;
+
+            topPipe.move(0, moveStep);
+            bottomPipe.move(0, moveStep);
+            currentOffsetY += moveStep;
+        }
+    }
 }
+
+
 
 void Pipe::draw(sf::RenderWindow& window) {
     window.draw(topPipe);

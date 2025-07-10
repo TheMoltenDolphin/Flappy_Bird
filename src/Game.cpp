@@ -1,4 +1,5 @@
 #include "Game.hpp"
+#include "Config.hpp"
 #include <cstdlib>
 #include <ctime>
 
@@ -33,16 +34,28 @@ void Game::processEvents() {
 
 
 void Game::update(float dt) {
+    totalElapsedTime += dt;
     bird.update(dt);
 
     if (spawnClock.getElapsedTime().asSeconds() > pipeSpawnInterval) {
-        float gapY = 350 + rand() % 600;
-        pipes.emplace_back(1200, gapY);
+        float GAP = 200.f;
+        float scale = 5.f;
+        float pipeTextureHeight = 160.f; // укажи точную высоту своей текстуры!
+        float pipeHeight = pipeTextureHeight * scale;
+
+        float minGapY = PIPE_GAP / 2 + PIPE_MARGIN;
+        float maxGapY = WINDOW_HEIGHT - PIPE_GAP / 2 - PIPE_MARGIN;
+        float gapY = rand() % static_cast<int>(maxGapY - minGapY + 1) + minGapY;
+
+        float moveChance = std::min(INITIAL_MOVING_PIPE_CHANCE + totalElapsedTime * MOVING_PIPE_CHANCE_GROWTH, MAX_MOVING_PIPE_CHANCE);
+
+        bool shouldMove = (static_cast<float>(rand()) / RAND_MAX) < moveChance;
+        pipes.emplace_back(WINDOW_WIDTH, gapY, totalElapsedTime, shouldMove);
         spawnClock.restart();
     }
 
     for (auto& pipe : pipes)
-        pipe.update(dt, pipeSpeed);
+        pipe.update(dt);
 
     pipes.erase(std::remove_if(pipes.begin(), pipes.end(), [](const Pipe& p) { return p.isOffScreen(); }), pipes.end());
 

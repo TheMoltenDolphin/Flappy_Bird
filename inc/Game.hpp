@@ -27,6 +27,7 @@ private:
     sf::Clock gameClock;
     sf::Clock flapClock;
     const float flapCooldown = 0.25f;
+    float totalElapsedTime = 0.f;
     float pipeSpawnInterval;
     float pipeSpeed;
     int score;
