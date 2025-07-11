@@ -4,13 +4,29 @@
 #include <cstdlib>
 #include <ctime>
 
+
 Game::Game()
     : window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Flappy Bird ++"),
       pipeSpawnTimer(0.f),
       totalElapsedTime(0.f),
       isGameOver(false)
 {
-        score = 0;
+
+    backgroundTextures[0].loadFromFile("assets/evening.jpg");
+    backgroundTextures[1].loadFromFile("assets/day.jpg");
+    backgroundTextures[2].loadFromFile("assets/evening.jpg");
+    backgroundTextures[3].loadFromFile("assets/night.jpg");
+
+    currentTimeOfDay = TimeOfDay::Morning;
+    nextTimeOfDay = TimeOfDay::Day;
+    dayPhaseTimer = 0.f;
+    transitionProgress = 0.f;
+    inTransition = false;
+
+    backgroundSpriteCurrent.setTexture(backgroundTextures[static_cast<int>(currentTimeOfDay)]);
+    backgroundSpriteNext.setTexture(backgroundTextures[static_cast<int>(nextTimeOfDay)]);
+
+    score = 0;
 
     if (!font.loadFromFile("assets/arial.ttf")) {
         std::cerr << "SOSALSOSALSOSAL\n";
@@ -126,11 +142,46 @@ void Game::update(float deltaTime)
     if (bird.getBounds().top < 0 || bird.getBounds().top + bird.getBounds().height > WINDOW_HEIGHT) {
         isGameOver = true;
     }
+
+    dayPhaseTimer += deltaTime;
+
+    if (!inTransition && dayPhaseTimer >= DAY_PHASE_DURATION) {
+        inTransition = true;
+        transitionProgress = 0.f;
+        dayPhaseTimer = 0.f;
+        nextTimeOfDay = getNextTimeOfDay(currentTimeOfDay);
+        backgroundSpriteNext.setTexture(backgroundTextures[static_cast<int>(nextTimeOfDay)]);
+    }
+
+    if (inTransition) {
+        transitionProgress += deltaTime / PHASE_TRANSITION_DURATION;
+        if (transitionProgress >= 1.f) {
+            transitionProgress = 0.f;
+            inTransition = false;
+            currentTimeOfDay = nextTimeOfDay;
+            backgroundSpriteCurrent.setTexture(backgroundTextures[static_cast<int>(currentTimeOfDay)]);
+        }
+    }
 }
 
 void Game::render()
 {
     window.clear(sf::Color::Cyan);
+
+
+    if (inTransition)
+    {
+        backgroundSpriteCurrent.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>((1 - transitionProgress) * 255)));
+        backgroundSpriteNext.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>(transitionProgress * 255)));
+
+        window.draw(backgroundSpriteCurrent);
+        window.draw(backgroundSpriteNext);
+    }
+    else
+    {
+        backgroundSpriteCurrent.setColor(sf::Color::White);
+        window.draw(backgroundSpriteCurrent);
+    }
 
     for (auto& pipe : pipes)
         pipe.draw(window);
@@ -152,6 +203,9 @@ void Game::render()
         text.setPosition(WINDOW_WIDTH / 2.f - text.getLocalBounds().width / 2.f, WINDOW_HEIGHT / 2.f - 40.f);
         window.draw(text);
     }
+
+    
+
 
     window.display();
 }

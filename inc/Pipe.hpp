@@ -17,6 +17,7 @@ public:
 
 
 private:
+
     sf::Sprite topPipe;
     sf::Sprite bottomPipe;
 

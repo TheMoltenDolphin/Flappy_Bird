@@ -69,8 +69,8 @@ void Pipe::update(float deltaTime)
                 moveStep = targetOffsetY - currentOffsetY;
             }
 
-            topPipe.move(0, moveStep);
-            bottomPipe.move(0, moveStep);
+            topPipe.move(0, moveStep*MOVING_PIPE_SPEED);
+            bottomPipe.move(0, moveStep*MOVING_PIPE_SPEED);
             currentOffsetY += moveStep;
         }
     }
