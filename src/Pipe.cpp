@@ -34,10 +34,7 @@ Pipe::Pipe(float x, float gapY, float gameTime, bool moving)
     bottomPipe.setPosition(x, gapY + PIPE_GAP / 2.f);
 
     if (isMoving) {
-        float maxOffset = std::min(
-            MOVING_PIPE_INITIAL_OFFSET + gameTime * MOVING_PIPE_OFFSET_GROWTH,
-            MOVING_PIPE_MAX_OFFSET
-        );
+        float maxOffset = std::max(MOVING_PIPE_INITIAL_OFFSET + gameTime * MOVING_PIPE_OFFSET_GROWTH, MOVING_PIPE_MAX_OFFSET);
 
         targetOffsetY = static_cast<float>((rand() % static_cast<int>(maxOffset * 2 + 1)) - maxOffset);
         movementDelayClock.restart();
@@ -50,10 +47,7 @@ void Pipe::update(float deltaTime)
     topPipe.move(-moveSpeed * deltaTime, 0);
     bottomPipe.move(-moveSpeed * deltaTime, 0);
 
-    currentMovingPipeDelay += MOVING_PIPE_DELAY_BEFORE_MOVING_ACCELERATION * deltaTime;
-    if (currentMovingPipeDelay > MOVING_PIPE_DELAY_BEFORE_MOVING_MAX)
-        currentMovingPipeDelay = MOVING_PIPE_DELAY_BEFORE_MOVING_MAX;
-
+    currentMovingPipeDelay = std::min(currentMovingPipeDelay + MOVING_PIPE_DELAY_BEFORE_MOVING_ACCELERATION * deltaTime, MOVING_PIPE_DELAY_BEFORE_MOVING_MAX);
 
     // Обработка движения подвижных труб
     if (isMoving) {

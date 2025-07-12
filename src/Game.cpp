@@ -29,7 +29,7 @@ Game::Game()
     score = 0;
 
     if (!font.loadFromFile("assets/arial.ttf")) {
-        std::cerr << "SOSALSOSALSOSAL\n";
+        std::cerr << "can't load font\n";
     }
 
     scoreText.setFont(font);
@@ -41,7 +41,7 @@ Game::Game()
     currentPipeSpeed = PIPE_SPEED_START;
     currentPipeSpawnInterval = PIPE_SPAWN_INTERVAL_START;
 
-    window.setFramerateLimit(60);
+    window.setFramerateLimit(500);
     std::srand(static_cast<unsigned int>(std::time(nullptr)));
 }
 
@@ -83,15 +83,10 @@ void Game::update(float deltaTime)
     bird.update(deltaTime);
 
     // Увеличиваем скорость труб с ограничением
-    currentPipeSpeed += PIPE_SPEED_ACCELERATION * deltaTime;
-    if (currentPipeSpeed > PIPE_SPEED_MAX)
-        currentPipeSpeed = PIPE_SPEED_MAX;
+    currentPipeSpeed = std::min(currentPipeSpeed + PIPE_SPEED_ACCELERATION * deltaTime, PIPE_SPEED_MAX);
 
     // Уменьшаем интервал появления труб, но не меньше минимального
-    currentPipeSpawnInterval -= PIPE_SPAWN_ACCELERATION * deltaTime;
-    if (currentPipeSpawnInterval < PIPE_SPAWN_INTERVAL_MIN)
-        currentPipeSpawnInterval = PIPE_SPAWN_INTERVAL_MIN;
-
+    currentPipeSpawnInterval = std::max(currentPipeSpawnInterval - PIPE_SPAWN_ACCELERATION * deltaTime, PIPE_SPAWN_INTERVAL_MIN);
 
     if (pipeSpawnTimer >= currentPipeSpawnInterval) {
         pipeSpawnTimer = 0.f;
@@ -100,10 +95,7 @@ void Game::update(float deltaTime)
         float gapY = static_cast<float>(rand() % static_cast<int>(PIPE_MAX_GAP_Y - PIPE_MIN_GAP_Y)) + PIPE_MIN_GAP_Y;
 
         // Вычисляем вероятность появления движущейся трубы
-        float moveChance = std::min(
-            MOVING_PIPE_INITIAL_CHANCE + totalElapsedTime * MOVING_PIPE_CHANCE_GROWTH,
-            MOVING_PIPE_MAX_CHANCE
-        );
+        float moveChance = std::min(MOVING_PIPE_INITIAL_CHANCE + totalElapsedTime * MOVING_PIPE_CHANCE_GROWTH, MOVING_PIPE_MAX_CHANCE);
         bool shouldMove = (static_cast<float>(rand()) / RAND_MAX) < moveChance;
 
         Pipe newPipe(WINDOW_WIDTH, gapY, totalElapsedTime, shouldMove);
@@ -112,31 +104,32 @@ void Game::update(float deltaTime)
     }
 
     // Обновляем трубы
-    for (auto& pipe : pipes) {
+    for (Pipe& pipe : pipes) {
         pipe.update(deltaTime);
     }
 
-    // Удаляем трубы, вышедшие за экран
+    // удаляем трубы
     pipes.erase(
         std::remove_if(pipes.begin(), pipes.end(),
             [](const Pipe& pipe) { return pipe.isOffScreen(); }),
         pipes.end()
     );
-
+    
     // Проверка столкновений
-    for (const auto& pipe : pipes) {
+    for (const Pipe& pipe : pipes) {
         if (bird.getBounds().intersects(pipe.getTopBounds()) ||
             bird.getBounds().intersects(pipe.getBottomBounds())) {
             isGameOver = true;
         }
     }
-    for (auto& pipe : pipes) {
+
+    //зачисление очков
+    for (Pipe& pipe : pipes) {
         if (pipe.hasPassed(bird.getBounds().left)) {
             score++;
             scoreText.setString(std::to_string(score));
         }
     }
-
 
     // Проверка выхода за границы
     if (bird.getBounds().top < 0 || bird.getBounds().top + bird.getBounds().height > WINDOW_HEIGHT) {
@@ -168,7 +161,6 @@ void Game::render()
 {
     window.clear(sf::Color::Cyan);
 
-
     if (inTransition)
     {
         backgroundSpriteCurrent.setColor(sf::Color(255, 255, 255, static_cast<sf::Uint8>((1 - transitionProgress) * 255)));
@@ -183,7 +175,7 @@ void Game::render()
         window.draw(backgroundSpriteCurrent);
     }
 
-    for (auto& pipe : pipes)
+    for (Pipe& pipe : pipes)
         pipe.draw(window);
 
     bird.draw(window);

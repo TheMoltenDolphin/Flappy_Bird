@@ -2,7 +2,6 @@
 #include <SFML/Graphics.hpp>
 #include "Bird.hpp"
 #include "Pipe.hpp"
-#include "Bonus.hpp"
 #include "Func.hpp"
 #include <vector>
 
